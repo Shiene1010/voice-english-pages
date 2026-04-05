@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice English Pages</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f7fb;
+      color: #18212f;
+    }
+    .app {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 24px 20px 48px;
+    }
+    .hero {
+      margin-bottom: 20px;
+    }
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+    }
+    .hero p {
+      margin: 0;
+      color: #5b6472;
+      line-height: 1.6;
+    }
+    .card, .panel {
+      background: #fff;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 12px 30px rgba(16, 24, 40, 0.08);
+      margin-bottom: 16px;
+    }
+    .label {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: #667085;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .expression {
+      margin: 0 0 10px;
+      font-size: 36px;
+      line-height: 1.15;
+    }
+    .meaning, .example {
+      margin: 0 0 8px;
+      line-height: 1.6;
+    }
+    .status-line {
+      margin: 0 0 10px;
+      font-size: 16px;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #e6f4ea;
+      color: #166534;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .status-badge.playing { background: #dbeafe; color: #1d4ed8; }
+    .status-badge.listening { background: #f3e8ff; color: #7e22ce; }
+    .status-badge.feedback { background: #fff7ed; color: #c2410c; }
+
+    .result {
+      margin: 10px 0 0;
+      line-height: 1.7;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      min-width: 140px;
+    }
+    #playBtn { background: #0f766e; }
+    #speakBtn { background: #7c3aed; }
+    #nextBtn { background: #334155; }
+    .hint {
+      font-size: 14px;
+      color: #667085;
+      margin-top: 12px;
+      line-height: 1.6;
+    }
+    .transcript {
+      font-weight: 600;
+      color: #111827;
+    }
+    @media (max-width: 640px) {
+      .expression { font-size: 28px; }
+      .hero h1 { font-size: 26px; }
+      button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <h1>Voice English Pages</h1>
+      <p>
+        2탭은 재생/정지처럼 쓰고, 길게 누르기는 “말하기 시작”처럼 쓰는
+        영어 표현 학습용 정적 웹 프로토타입입니다.
+      </p>
+    </section>
+
+    <section class="card">
+      <p class="label">Today’s expression</p>
+      <h2 class="expression" id="expression">I’m on my way.</h2>
+      <p class="meaning" id="meaning">가고 있는 중이야.</p>
+      <p class="example" id="example">Example: I’m on my way, so please start without me.</p>
+    </section>
+
+    <section class="panel">
+      <p class="status-line">
+        Status
+        <span id="statusBadge" class="status-badge">Ready</span>
+      </p>
+      <p class="result">You said: <span id="heard" class="transcript">-</span></p>
+      <p class="result">Feedback: <span id="feedback">Tap play to listen first.</span></p>
+
+      <div class="controls">
+        <button id="playBtn">Play / Pause</button>
+        <button id="speakBtn">Hold to Speak</button>
+        <button id="nextBtn">Next</button>
+      </div>
+
+      <p class="hint">
+        테스트 방법: 먼저 Play로 듣고, Hold to Speak를 0.35초 이상 누른 뒤 문장을 따라 말해보세요.
+        일부 브라우저에서는 음성 인식 지원이 제한될 수 있습니다.
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const phrases = [
+      {
+        expression: "I'm on my way.",
+        meaning: "가고 있는 중이야.",
+        example: "I'm on my way, so please start without me.",
+        keywords: ["on my way"]
+      },
+      {
+        expression: "Could you give me a hand?",
+        meaning: "도와줄 수 있어?",
+        example: "Could you give me a hand with this box?",
+        keywords: ["give me a hand"]
+      },
+      {
+        expression: "I'm still thinking about it.",
+        meaning: "아직 생각 중이야.",
+        example: "I'm still thinking about it, so I can't decide yet.",
+        keywords: ["thinking about it", "still thinking"]
+      }
+    ];
+
+    let currentIndex = 0;
+    let appState = "idle";
+    let holdTimer = null;
+    let currentUtterance = null;
+
+    const expressionEl = document.getElementById("expression");
+    const meaningEl = document.getElementById("meaning");
+    const exampleEl = document.getElementById("example");
+    const heardEl = document.getElementById("heard");
+    const feedbackEl = document.getElementById("feedback");
+    const statusBadge = document.getElementById("statusBadge");
+
+    const playBtn = document.getElementById("playBtn");
+    const speakBtn = document.getElementById("speakBtn");
+    const nextBtn = document.getElementById("nextBtn");
+
+    function setState(next) {
+      appState = next;
+      statusBadge.className = "status-badge";
+      const map = {
+        idle: "Ready",
+        playing: "Playing",
+        listening: "Listening",
+        feedback: "Feedback"
+      };
+      statusBadge.textContent = map[next] || next;
+      if (next !== "idle") statusBadge.classList.add(next);
+    }
+
+    function renderPhrase() {
+      const item = phrases[currentIndex];
+      expressionEl.textContent = item.expression;
+      meaningEl.textContent = item.meaning;
+      exampleEl.textContent = `Example: ${item.example}`;
+      heardEl.textContent = "-";
+      feedbackEl.textContent = "Tap play to listen first.";
+      setState("idle");
+      updateMediaSession();
+    }
+
+    function speakCurrent() {
+      stopSpeaking();
+      const item = phrases[currentIndex];
+      currentUtterance = new SpeechSynthesisUtterance(item.example);
+      currentUtterance.lang = "en-US";
+      currentUtterance.rate = 0.92;
+      currentUtterance.onstart = () => {
+        setState("playing");
+        if ("mediaSession" in navigator) {
+          navigator.mediaSession.playbackState = "playing";
+        }
+      };
+      currentUtterance.onend = () => {
+        setState("idle");
+        if ("mediaSession" in navigator) {
+          navigator.mediaSession.playbackState = "paused";
+        }
+      };
+      speechSynthesis.speak(currentUtterance);
+    }
+
+    function stopSpeaking() {
+      speechSynthesis.cancel();
+      currentUtterance = null;
+      if (appState === "playing") {
+        setState("idle");
+      }
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "paused";
+      }
+    }
+
+    function giveFeedback(transcript) {
+      const item = phrases[currentIndex];
+      const spoken = transcript.toLowerCase();
+      const exact = item.expression.toLowerCase().replace(/[.?]/g, "");
+      const normalized = spoken.replace(/[.?]/g, "");
+
+      if (normalized === exact) {
+        feedbackEl.textContent = "Excellent. Exact match.";
+      } else if (item.keywords.some(k => spoken.includes(k))) {
+        feedbackEl.textContent = "Good. You caught the key expression.";
+      } else {
+        feedbackEl.textContent = "Nice try. Listen again and repeat the key phrase.";
+      }
+      setState("feedback");
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        stopSpeaking();
+        setState("listening");
+        feedbackEl.textContent = "Speak now.";
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        heardEl.textContent = transcript;
+        giveFeedback(transcript);
+      };
+
+      recognition.onerror = (event) => {
+        setState("idle");
+        feedbackEl.textContent = `Speech recognition error: ${event.error}`;
+      };
+
+      recognition.onend = () => {
+        if (appState === "listening") {
+          setState("feedback");
+        }
+      };
+    } else {
+      feedbackEl.textContent = "Speech recognition is not supported in this browser.";
+    }
+
+    function startListening() {
+      if (!recognition) return;
+      try {
+        recognition.start();
+      } catch (e) {
+        feedbackEl.textContent = "Recognition is already running or blocked by the browser.";
+      }
+    }
+
+    playBtn.addEventListener("click", () => {
+      if (appState === "playing") {
+        stopSpeaking();
+      } else {
+        speakCurrent();
+      }
+    });
+
+    speakBtn.addEventListener("pointerdown", () => {
+      holdTimer = setTimeout(() => {
+        startListening();
+      }, 350);
+    });
+
+    function cancelHold() {
+      clearTimeout(holdTimer);
+    }
+
+    speakBtn.addEventListener("pointerup", cancelHold);
+    speakBtn.addEventListener("pointerleave", cancelHold);
+    speakBtn.addEventListener("pointercancel", cancelHold);
+
+    nextBtn.addEventListener("click", () => {
+      stopSpeaking();
+      currentIndex = (currentIndex + 1) % phrases.length;
+      renderPhrase();
+    });
+
+    function updateMediaSession() {
+      if (!("mediaSession" in navigator)) return;
+
+      const item = phrases[currentIndex];
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: item.expression,
+        artist: "Voice English Pages",
+        album: item.meaning
+      });
+
+      navigator.mediaSession.setActionHandler("play", async () => {
+        speakCurrent();
+      });
+
+      navigator.mediaSession.setActionHandler("pause", () => {
+        stopSpeaking();
+      });
+    }
+
+    renderPhrase();
+  </script>
+</body>
+</html>
