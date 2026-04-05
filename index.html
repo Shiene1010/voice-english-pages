@@ -136,6 +136,14 @@
     #retryBtn {
       background: #b45309;
     }
+    #reviewMissedBtn {
+      background: #1d4ed8;
+    }
+
+    #restartBtn {
+      background: #475569;
+    }
+
     
     .progress-track {
       width: 100%;
@@ -227,6 +235,19 @@
         일부 브라우저에서는 음성 인식 지원이 제한될 수 있습니다.
       </p>
     </section>
+
+    <section class="panel" id="summaryPanel" hidden>
+      <p class="label">Session complete</p>
+      <h2 id="summaryTitle">Nice work.</h2>
+      <p id="summaryScore">You scored 0 points.</p>
+      <p id="summarySolved">You solved 0 of 3 expressions.</p>
+      <div class="controls">
+        <button id="reviewMissedBtn">Review missed</button>
+        <button id="restartBtn">Start again</button>
+      </div>
+    </section>
+
+
   </main>
 
   <script>
@@ -260,6 +281,10 @@
     let attempts = 0;
     let solvedMap = {};
 
+    let reviewQueue = [];
+    let isReviewMode = false;
+
+
 
     const expressionEl = document.getElementById("expression");
     const meaningEl = document.getElementById("meaning");
@@ -282,11 +307,43 @@
 
     const cardStatusEl = document.getElementById("cardStatus");
 
+    const summaryPanelEl = document.getElementById("summaryPanel");
+    const summaryTitleEl = document.getElementById("summaryTitle");
+    const summaryScoreEl = document.getElementById("summaryScore");
+    const summarySolvedEl = document.getElementById("summarySolved");
+    const reviewMissedBtn = document.getElementById("reviewMissedBtn");
+    const restartBtn = document.getElementById("restartBtn");
+
+
 
     retryBtn.addEventListener("click", () => {
       heardEl.textContent = "-";
       feedbackEl.textContent = "Try speaking again.";
       startListening();
+    });
+
+    reviewMissedBtn.addEventListener("click", () => {
+      if (reviewQueue.length === 0) {
+        summaryTitleEl.textContent = "Perfect run.";
+        summarySolvedEl.textContent = "You solved everything already.";
+        return;
+      }
+
+      isReviewMode = true;
+      hideSummary();
+      currentIndex = reviewQueue[0];
+      renderPhrase();
+    });
+
+    restartBtn.addEventListener("click", () => {
+      score = 0;
+      attempts = 0;
+      solvedMap = {};
+      reviewQueue = [];
+      isReviewMode = false;
+      currentIndex = 0;
+      hideSummary();
+      renderPhrase();
     });
 
 
@@ -490,9 +547,28 @@
 
     nextBtn.addEventListener("click", () => {
       stopSpeaking();
-      currentIndex = (currentIndex + 1) % phrases.length;
-      renderPhrase();
+
+      if (isReviewMode) {
+        const currentPos = reviewQueue.indexOf(currentIndex);
+        const nextReviewIndex = reviewQueue[currentPos + 1];
+
+        if (nextReviewIndex !== undefined) {
+          currentIndex = nextReviewIndex;
+          renderPhrase();
+        } else {
+          showSummary();
+        }
+        return;
+      }
+
+      if (currentIndex < phrases.length - 1) {
+        currentIndex += 1;
+        renderPhrase();
+      } else {
+        showSummary();
+      }
     });
+
 
     function updateMediaSession() {
       if (!("mediaSession" in navigator)) return;
@@ -523,10 +599,39 @@
 
     function updateProgressUI() {
       scoreEl.textContent = score;
-      progressTextEl.textContent = `${currentIndex + 1} / ${phrases.length}`;
-      const percent = ((currentIndex + 1) / phrases.length) * 100;
-      progressBarEl.style.width = `${percent}%`;
+
+      if (isReviewMode) {
+        const reviewPos = reviewQueue.indexOf(currentIndex) + 1;
+        progressTextEl.textContent = `Review ${reviewPos} / ${reviewQueue.length}`;
+        const percent = reviewQueue.length
+          ? (reviewPos / reviewQueue.length) * 100
+          : 0;
+        progressBarEl.style.width = `${percent}%`;
+      } else {
+        progressTextEl.textContent = `${currentIndex + 1} / ${phrases.length}`;
+        const percent = ((currentIndex + 1) / phrases.length) * 100;
+        progressBarEl.style.width = `${percent}%`;
+      }
     }
+
+
+    function showSummary() {
+      const solvedCount = Object.keys(solvedMap).length;
+      reviewQueue = phrases
+        .map((_, index) => index)
+        .filter(index => !solvedMap[index]);
+
+      summaryTitleEl.textContent = isReviewMode ? "Review complete." : "Session complete.";
+      summaryScoreEl.textContent = `You scored ${score} point${score === 1 ? "" : "s"}.`;
+      summarySolvedEl.textContent = `You solved ${solvedCount} of ${phrases.length} expressions.`;
+
+      summaryPanelEl.hidden = false;
+    }
+
+    function hideSummary() {
+      summaryPanelEl.hidden = true;
+    }
+
 
 
     function renderPhrase() {
