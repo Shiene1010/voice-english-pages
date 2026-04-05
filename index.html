@@ -136,6 +136,22 @@
     #retryBtn {
       background: #b45309;
     }
+    
+    .progress-track {
+      width: 100%;
+      height: 12px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #0f766e, #14b8a6);
+      transition: width 240ms ease;
+    }
 
 
     .pulse {
@@ -166,11 +182,25 @@
       </p>
     </section>
 
+    <section class="panel">
+      <p class="status-line">
+        Session score: <strong id="score">0</strong>
+      </p>
+      <p class="status-line">
+        Progress: <span id="progressText">1 / 3</span>
+      </p>
+      <div class="progress-track">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+    </section>
+
     <section class="card">
       <p class="label">Today’s expression</p>
       <h2 class="expression" id="expression">I’m on my way.</h2>
       <p class="meaning" id="meaning">가고 있는 중이야.</p>
       <p class="example" id="example">Example: I’m on my way, so please start without me.</p>
+      <p id="cardStatus" class="label">Not solved yet</p>
+
     </section>
 
     <section class="panel">
@@ -226,6 +256,11 @@
     let holdTimer = null;
     let currentUtterance = null;
 
+    let score = 0;
+    let attempts = 0;
+    let solvedMap = {};
+
+
     const expressionEl = document.getElementById("expression");
     const meaningEl = document.getElementById("meaning");
     const exampleEl = document.getElementById("example");
@@ -240,6 +275,13 @@
     const speakBtn = document.getElementById("speakBtn");
     const nextBtn = document.getElementById("nextBtn");
     const retryBtn = document.getElementById("retryBtn");
+
+    const scoreEl = document.getElementById("score");
+    const progressTextEl = document.getElementById("progressText");
+    const progressBarEl = document.getElementById("progressBar");
+
+    const cardStatusEl = document.getElementById("cardStatus");
+
 
     retryBtn.addEventListener("click", () => {
       heardEl.textContent = "-";
@@ -323,16 +365,28 @@
       const normalized = spoken.replace(/[.?]/g, "");
       const matchedKeyword = item.keywords.find(k => spoken.includes(k));
 
+      attempts += 1;
+
       if (normalized === exact) {
-        feedbackEl.textContent = "Excellent. Exact match.";
+        feedbackEl.textContent = "Excellent. Exact match. +2 points.";
+        if (!solvedMap[currentIndex]) {
+          score += 2;
+          solvedMap[currentIndex] = "exact";
+        }
       } else if (matchedKeyword) {
-        feedbackEl.textContent = `Good. You said the key expression: "${matchedKeyword}".`;
+        feedbackEl.textContent = `Good. You said the key expression: "${matchedKeyword}". +1 point.`;
+        if (!solvedMap[currentIndex]) {
+          score += 1;
+          solvedMap[currentIndex] = "keyword";
+        }
       } else {
         feedbackEl.textContent = "Nice try. Listen again and repeat the key phrase more clearly.";
       }
 
+      updateProgressUI();
       setState("feedback");
     }
+
 
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -467,7 +521,35 @@
       });
     }
 
-    renderPhrase();
+    function updateProgressUI() {
+      scoreEl.textContent = score;
+      progressTextEl.textContent = `${currentIndex + 1} / ${phrases.length}`;
+      const percent = ((currentIndex + 1) / phrases.length) * 100;
+      progressBarEl.style.width = `${percent}%`;
+    }
+
+
+    function renderPhrase() {
+      const item = phrases[currentIndex];
+      expressionEl.textContent = item.expression;
+      meaningEl.textContent = item.meaning;
+      exampleEl.textContent = `Example: ${item.example}`;
+      heardEl.textContent = "-";
+      feedbackEl.textContent = "Tap play to listen first.";
+      setState("idle");
+      updateMediaSession();
+      updateProgressUI();
+
+      if (solvedMap[currentIndex] === "exact") {
+        cardStatusEl.textContent = "Solved perfectly";
+      } else if (solvedMap[currentIndex] === "keyword") {
+        cardStatusEl.textContent = "Key phrase matched";
+      } else {
+        cardStatusEl.textContent = "Not solved yet";
+      }
+
+    }
+
   </script>
 </body>
 </html>
