@@ -109,9 +109,34 @@
     }
 
     .panel.listening {
-      outline: 3px solid #c084fc;
-      background: #faf5ff;
+      outline: none;
+      background: #fff;
     }
+
+    .status-line.listening-row {
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+    }
+
+    .result-box {
+      margin-top: 12px;
+      padding: 14px;
+      border-radius: 14px;
+      background: #f8fafc;
+    }
+
+
+    .result-box.listening-box {
+      background: #faf5ff;
+      border: 1px solid #e9d5ff;
+    }
+
+    #retryBtn {
+      background: #b45309;
+    }
+
 
     .pulse {
       display: inline-block;
@@ -149,17 +174,22 @@
     </section>
 
     <section class="panel">
-      <p class="status-line">
+      <p class="status-line" id="statusLine">
         Status
         <span id="statusBadge" class="status-badge">Ready</span>
       </p>
-      <p class="result">You said: <span id="heard" class="transcript">-</span></p>
-      <p class="result">Feedback: <span id="feedback">Tap play to listen first.</span></p>
+
+      <div class="result-box" id="resultBox">
+        <p class="result">You said: <span id="heard" class="transcript">-</span></p>
+        <p class="result">Feedback: <span id="feedback">Tap play to listen first.</span></p>
+      </div>
 
       <div class="controls">
         <button id="playBtn">Play / Pause</button>
         <button id="speakBtn">Hold to Speak</button>
         <button id="nextBtn">Next</button>
+        <button id="retryBtn">Retry</button>
+
       </div>
 
       <p class="hint">
@@ -203,16 +233,26 @@
     const feedbackEl = document.getElementById("feedback");
     const statusBadge = document.getElementById("statusBadge");
     const panelEl = document.querySelector(".panel");
-
+    const statusLineEl = document.getElementById("statusLine");
+    const resultBoxEl = document.getElementById("resultBox");
 
     const playBtn = document.getElementById("playBtn");
     const speakBtn = document.getElementById("speakBtn");
     const nextBtn = document.getElementById("nextBtn");
+    const retryBtn = document.getElementById("retryBtn");
+
+    retryBtn.addEventListener("click", () => {
+      heardEl.textContent = "-";
+      feedbackEl.textContent = "Try speaking again.";
+      startListening();
+    });
+
 
     function setState(next) {
       appState = next;
       statusBadge.className = "status-badge";
-      panelEl.classList.remove("listening");
+      statusLineEl.classList.remove("listening-row");
+      resultBoxEl.classList.remove("listening-box");
 
       const map = {
         idle: "Ready",
@@ -224,8 +264,10 @@
       statusBadge.textContent = map[next] || next;
 
       if (next !== "idle") statusBadge.classList.add(next);
+
       if (next === "listening") {
-        panelEl.classList.add("listening");
+        statusLineEl.classList.add("listening-row");
+        resultBoxEl.classList.add("listening-box");
         statusBadge.innerHTML = 'Listening <span class="pulse"></span>';
       }
     }
@@ -351,8 +393,12 @@
       recognition.onend = () => {
         if (appState === "listening") {
           setState("feedback");
+          if (feedbackEl.textContent === "Speak now." || feedbackEl.textContent === "Listening...") {
+            feedbackEl.textContent = "Listening ended. Tap Retry to try again.";
+          }
         }
       };
+
     } else {
       feedbackEl.textContent = "Speech recognition is not supported in this browser.";
     }
@@ -401,8 +447,16 @@
       navigator.mediaSession.metadata = new MediaMetadata({
         title: item.expression,
         artist: "Voice English Pages",
-        album: item.meaning
+        album: item.meaning,
+        artwork: [
+          {
+            src: "https://dummyimage.com/192x192/0f766e/ffffff&text=EE",
+            sizes: "192x192",
+            type: "image/png"
+          }
+        ]
       });
+
 
       navigator.mediaSession.setActionHandler("play", async () => {
         speakCurrent();
