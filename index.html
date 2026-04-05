@@ -107,6 +107,28 @@
       .hero h1 { font-size: 26px; }
       button { width: 100%; }
     }
+
+    .panel.listening {
+      outline: 3px solid #c084fc;
+      background: #faf5ff;
+    }
+
+    .pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: #a855f7;
+      margin-left: 8px;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.2); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
   </style>
 </head>
 <body>
@@ -180,6 +202,8 @@
     const heardEl = document.getElementById("heard");
     const feedbackEl = document.getElementById("feedback");
     const statusBadge = document.getElementById("statusBadge");
+    const panelEl = document.querySelector(".panel");
+
 
     const playBtn = document.getElementById("playBtn");
     const speakBtn = document.getElementById("speakBtn");
@@ -188,15 +212,24 @@
     function setState(next) {
       appState = next;
       statusBadge.className = "status-badge";
+      panelEl.classList.remove("listening");
+
       const map = {
         idle: "Ready",
         playing: "Playing",
         listening: "Listening",
         feedback: "Feedback"
       };
+
       statusBadge.textContent = map[next] || next;
+
       if (next !== "idle") statusBadge.classList.add(next);
+      if (next === "listening") {
+        panelEl.classList.add("listening");
+        statusBadge.innerHTML = 'Listening <span class="pulse"></span>';
+      }
     }
+
 
     function renderPhrase() {
       const item = phrases[currentIndex];
@@ -246,16 +279,19 @@
       const spoken = transcript.toLowerCase();
       const exact = item.expression.toLowerCase().replace(/[.?]/g, "");
       const normalized = spoken.replace(/[.?]/g, "");
+      const matchedKeyword = item.keywords.find(k => spoken.includes(k));
 
       if (normalized === exact) {
         feedbackEl.textContent = "Excellent. Exact match.";
-      } else if (item.keywords.some(k => spoken.includes(k))) {
-        feedbackEl.textContent = "Good. You caught the key expression.";
+      } else if (matchedKeyword) {
+        feedbackEl.textContent = `Good. You said the key expression: "${matchedKeyword}".`;
       } else {
-        feedbackEl.textContent = "Nice try. Listen again and repeat the key phrase.";
+        feedbackEl.textContent = "Nice try. Listen again and repeat the key phrase more clearly.";
       }
+
       setState("feedback");
     }
+
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     let recognition = null;
@@ -263,7 +299,7 @@
     if (SpeechRecognition) {
       recognition = new SpeechRecognition();
       recognition.lang = "en-US";
-      recognition.interimResults = false;
+      recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
@@ -273,15 +309,44 @@
       };
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        heardEl.textContent = transcript;
-        giveFeedback(transcript);
+        let interimTranscript = "";
+        let finalTranscript = "";
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (interimTranscript) {
+          heardEl.textContent = interimTranscript + " …";
+          feedbackEl.textContent = "Listening...";
+        }
+
+        if (finalTranscript) {
+          heardEl.textContent = finalTranscript;
+          giveFeedback(finalTranscript);
+        }
       };
+
 
       recognition.onerror = (event) => {
         setState("idle");
-        feedbackEl.textContent = `Speech recognition error: ${event.error}`;
+
+        if (event.error === "not-allowed") {
+          feedbackEl.textContent = "Microphone access was blocked. Please allow mic permission.";
+        } else if (event.error === "no-speech") {
+          feedbackEl.textContent = "No speech was detected. Try speaking a bit louder.";
+        } else if (event.error === "network") {
+          feedbackEl.textContent = "Network error occurred during speech recognition.";
+        } else {
+          feedbackEl.textContent = `Speech recognition error: ${event.error}`;
+        }
       };
+
 
       recognition.onend = () => {
         if (appState === "listening") {
