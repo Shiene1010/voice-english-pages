@@ -161,6 +161,29 @@
       transition: width 240ms ease;
     }
 
+    .filter-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .chip {
+      min-width: auto;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      color: #0f172a;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .chip.active {
+      background: #0f766e;
+      color: white;
+    }
+
+
 
     .pulse {
       display: inline-block;
@@ -189,6 +212,19 @@
         영어 표현 학습용 정적 웹 프로토타입입니다.
       </p>
     </section>
+
+    <section class="panel">
+      <p class="label">Choose a category</p>
+      <div class="filter-row" id="filterRow">
+        <button class="chip active" data-category="all">All</button>
+        <button class="chip" data-category="daily-life">Daily life</button>
+        <button class="chip" data-category="work">Work</button>
+        <button class="chip" data-category="travel">Travel</button>
+        <button class="chip" data-category="social">Social</button>
+        <button class="chip" data-category="thinking">Thinking</button>
+      </div>
+    </section>
+
 
     <section class="panel">
       <p class="status-line">
@@ -381,7 +417,19 @@
 
     const metaInfoEl = document.getElementById("metaInfo");
 
+    const allPhrases = phrases;
+    let activeCategory = "all";
+    let sessionPhrases = [...allPhrases];
 
+    const chipEls = document.querySelectorAll(".chip");
+
+    chipEls.forEach(chip => {
+      chip.addEventListener("click", () => {
+        chipEls.forEach(el => el.classList.remove("active"));
+        chip.classList.add("active");
+        applyCategoryFilter(chip.dataset.category);
+      });
+    });
 
 
     retryBtn.addEventListener("click", () => {
@@ -671,13 +719,11 @@
       if (isReviewMode) {
         const reviewPos = reviewQueue.indexOf(currentIndex) + 1;
         progressTextEl.textContent = `Review ${reviewPos} / ${reviewQueue.length}`;
-        const percent = reviewQueue.length
-          ? (reviewPos / reviewQueue.length) * 100
-          : 0;
+        const percent = reviewQueue.length ? (reviewPos / reviewQueue.length) * 100 : 0;
         progressBarEl.style.width = `${percent}%`;
       } else {
-        progressTextEl.textContent = `${currentIndex + 1} / ${phrases.length}`;
-        const percent = ((currentIndex + 1) / phrases.length) * 100;
+        progressTextEl.textContent = `${currentIndex + 1} / ${sessionPhrases.length}`;
+        const percent = sessionPhrases.length ? ((currentIndex + 1) / sessionPhrases.length) * 100 : 0;
         progressBarEl.style.width = `${percent}%`;
       }
     }
@@ -685,25 +731,50 @@
 
     function showSummary() {
       const solvedCount = Object.keys(solvedMap).length;
-      reviewQueue = phrases
+      reviewQueue = sessionPhrases
         .map((_, index) => index)
         .filter(index => !solvedMap[index]);
 
       summaryTitleEl.textContent = isReviewMode ? "Review complete." : "Session complete.";
       summaryScoreEl.textContent = `You scored ${score} point${score === 1 ? "" : "s"}.`;
-      summarySolvedEl.textContent = `You solved ${solvedCount} of ${phrases.length} expressions.`;
+      summarySolvedEl.textContent = `You solved ${solvedCount} of ${sessionPhrases.length} expressions.`;
 
       summaryPanelEl.hidden = false;
     }
+
 
     function hideSummary() {
       summaryPanelEl.hidden = true;
     }
 
+    function applyCategoryFilter(category) {
+      activeCategory = category;
+
+      if (category === "all") {
+        sessionPhrases = [...allPhrases];
+      } else {
+        sessionPhrases = allPhrases.filter(item => item.category === category);
+      }
+
+      if (sessionPhrases.length === 0) {
+        feedbackEl.textContent = "No expressions found in this category yet.";
+        return;
+      }
+
+      currentIndex = 0;
+      score = 0;
+      attempts = 0;
+      solvedMap = {};
+      reviewQueue = [];
+      isReviewMode = false;
+      hideSummary();
+      renderPhrase();
+    }
 
 
     function renderPhrase() {
-      const item = phrases[currentIndex];
+      const item = sessionPhrases[currentIndex];
+
       expressionEl.textContent = item.expression;
       meaningEl.textContent = item.meaning;
       exampleEl.textContent = `Example: ${item.example}`;
