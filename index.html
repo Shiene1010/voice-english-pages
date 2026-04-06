@@ -208,6 +208,8 @@
       <p class="meaning" id="meaning">가고 있는 중이야.</p>
       <p class="example" id="example">Example: I’m on my way, so please start without me.</p>
       <p id="cardStatus" class="label">Not solved yet</p>
+      <p id="metaInfo" class="label">daily-life · easy</p>
+
 
     </section>
 
@@ -256,21 +258,84 @@
         expression: "I'm on my way.",
         meaning: "가고 있는 중이야.",
         example: "I'm on my way, so please start without me.",
-        keywords: ["on my way"]
+        keywords: ["on my way"],
+        difficulty: "easy",
+        category: "daily-life"
       },
       {
         expression: "Could you give me a hand?",
         meaning: "도와줄 수 있어?",
         example: "Could you give me a hand with this box?",
-        keywords: ["give me a hand"]
+        keywords: ["give me a hand"],
+        difficulty: "easy",
+        category: "social"
       },
       {
         expression: "I'm still thinking about it.",
         meaning: "아직 생각 중이야.",
         example: "I'm still thinking about it, so I can't decide yet.",
-        keywords: ["thinking about it", "still thinking"]
+        keywords: ["thinking about it", "still thinking"],
+        difficulty: "easy",
+        category: "thinking"
+      },
+      {
+        expression: "Do you have a minute?",
+        meaning: "잠깐 시간 있어?",
+        example: "Do you have a minute to talk?",
+        keywords: ["have a minute"],
+        difficulty: "easy",
+        category: "work"
+      },
+      {
+        expression: "Can I get this to go?",
+        meaning: "이거 포장해 주실 수 있나요?",
+        example: "Can I get this to go, please?",
+        keywords: ["to go"],
+        difficulty: "easy",
+        category: "travel"
+      },
+      {
+        expression: "That works for me.",
+        meaning: "저는 괜찮아요.",
+        example: "Friday afternoon? That works for me.",
+        keywords: ["works for me"],
+        difficulty: "easy",
+        category: "work"
+      },
+      {
+        expression: "I'm a bit under the weather.",
+        meaning: "몸이 좀 안 좋아요.",
+        example: "I'm a bit under the weather today.",
+        keywords: ["under the weather"],
+        difficulty: "medium",
+        category: "daily-life"
+      },
+      {
+        expression: "Could you speak a little slower?",
+        meaning: "조금 더 천천히 말씀해 주실 수 있나요?",
+        example: "Could you speak a little slower, please?",
+        keywords: ["speak a little slower"],
+        difficulty: "medium",
+        category: "travel"
+      },
+      {
+        expression: "Let's circle back later.",
+        meaning: "나중에 다시 이야기하죠.",
+        example: "Let's circle back later after the meeting.",
+        keywords: ["circle back"],
+        difficulty: "medium",
+        category: "work"
+      },
+      {
+        expression: "I didn't catch that.",
+        meaning: "잘 못 들었어요.",
+        example: "Sorry, I didn't catch that.",
+        keywords: ["didn't catch that"],
+        difficulty: "easy",
+        category: "social"
       }
     ];
+
 
     let currentIndex = 0;
     let appState = "idle";
@@ -313,6 +378,9 @@
     const summarySolvedEl = document.getElementById("summarySolved");
     const reviewMissedBtn = document.getElementById("reviewMissedBtn");
     const restartBtn = document.getElementById("restartBtn");
+
+    const metaInfoEl = document.getElementById("metaInfo");
+
 
 
 
@@ -641,6 +709,8 @@
       exampleEl.textContent = `Example: ${item.example}`;
       heardEl.textContent = "-";
       feedbackEl.textContent = "Tap play to listen first.";
+      metaInfoEl.textContent = `${item.category} · ${item.difficulty}`;
+
       setState("idle");
       updateMediaSession();
       updateProgressUI();
