@@ -183,6 +183,20 @@
       color: white;
     }
 
+    .difficulty-chip {
+      min-width: auto;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: #ede9fe;
+      color: #4c1d95;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .difficulty-chip.active {
+      background: #7c3aed;
+      color: white;
+    }
 
 
     .pulse {
@@ -225,6 +239,18 @@
       </div>
     </section>
 
+    <section class="panel">
+      <p class="label">Choose difficulty</p>
+      <div class="filter-row" id="difficultyRow">
+        <button class="difficulty-chip active" data-difficulty="all">All levels</button>
+        <button class="difficulty-chip" data-difficulty="easy">Easy</button>
+        <button class="difficulty-chip" data-difficulty="medium">Medium</button>
+        <button class="difficulty-chip" data-difficulty="hard">Hard</button>
+      </div>
+
+      <p class="label" style="margin-top:16px;">Active filters</p>
+      <p id="activeFiltersText">Category: All · Difficulty: All levels</p>
+    </section>
 
     <section class="panel">
       <p class="status-line">
@@ -385,7 +411,8 @@
     let reviewQueue = [];
     let isReviewMode = false;
 
-
+    let activeDifficulty = "all";
+    const activeFiltersTextEl = document.getElementById("activeFiltersText");
 
     const expressionEl = document.getElementById("expression");
     const meaningEl = document.getElementById("meaning");
@@ -427,7 +454,19 @@
       chip.addEventListener("click", () => {
         chipEls.forEach(el => el.classList.remove("active"));
         chip.classList.add("active");
-        applyCategoryFilter(chip.dataset.category);
+        activeCategory = chip.dataset.category;
+        applyFilters();
+      });
+    });
+
+    const difficultyChipEls = document.querySelectorAll(".difficulty-chip");
+
+    difficultyChipEls.forEach(chip => {
+      chip.addEventListener("click", () => {
+        difficultyChipEls.forEach(el => el.classList.remove("active"));
+        chip.classList.add("active");
+        activeDifficulty = chip.dataset.difficulty;
+        applyFilters();
       });
     });
 
@@ -747,17 +786,25 @@
       summaryPanelEl.hidden = true;
     }
 
-    function applyCategoryFilter(category) {
-      activeCategory = category;
+    function applyFilters() {
+      sessionPhrases = allPhrases.filter(item => {
+        const categoryMatch =
+          activeCategory === "all" || item.category === activeCategory;
 
-      if (category === "all") {
-        sessionPhrases = [...allPhrases];
-      } else {
-        sessionPhrases = allPhrases.filter(item => item.category === category);
-      }
+        const difficultyMatch =
+          activeDifficulty === "all" || item.difficulty === activeDifficulty;
+
+        return categoryMatch && difficultyMatch;
+      });
+
+      activeFiltersTextEl.textContent =
+      `Category: ${prettyCategoryLabel(activeCategory)} · Difficulty: ${prettyDifficultyLabel(activeDifficulty)}`;
+
 
       if (sessionPhrases.length === 0) {
-        feedbackEl.textContent = "No expressions found in this category yet.";
+        feedbackEl.textContent = "No expressions match this filter combination yet.";
+        heardEl.textContent = "-";
+        summaryPanelEl.hidden = true;
         return;
       }
 
@@ -770,7 +817,6 @@
       hideSummary();
       renderPhrase();
     }
-
 
     function renderPhrase() {
       const item = sessionPhrases[currentIndex];
@@ -795,6 +841,42 @@
       }
 
     }
+
+    function prettyCategoryLabel(value) {
+      const map = {
+        all: "All",
+        "daily-life": "Daily life",
+        work: "Work",
+        travel: "Travel",
+        social: "Social",
+        thinking: "Thinking"
+      };
+      return map[value] || value;
+    }
+
+    function prettyDifficultyLabel(value) {
+      const map = {
+        all: "All levels",
+        easy: "Easy",
+        medium: "Medium",
+        hard: "Hard"
+      };
+      return map[value] || value;
+    }
+
+    if (sessionPhrases.length === 0) {
+  feedbackEl.textContent =
+    "No expressions match this filter combination yet. Try another category or difficulty.";
+  heardEl.textContent = "-";
+  summaryPanelEl.hidden = true;
+  expressionEl.textContent = "No expressions found";
+  meaningEl.textContent = "필터 조합을 바꿔보세요.";
+  exampleEl.textContent = "Example: Choose another category or level.";
+  metaInfoEl.textContent =
+    `${prettyCategoryLabel(activeCategory)} · ${prettyDifficultyLabel(activeDifficulty)}`;
+  return;
+}
+
 
   </script>
 </body>
